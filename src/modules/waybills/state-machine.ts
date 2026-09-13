@@ -1,4 +1,4 @@
-import { ShipmentStatus, PaymentStatus } from "@prisma/client";
+import { ShipmentStatus, PaymentStatus, DocumentStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
 import { createAuditLogEntry } from "@/lib/audit/audit-logger";
 import {
@@ -464,3 +464,105 @@ export async function acceptDriverCommitment(input: AcceptCommitmentInput) {
     return acceptance;
   });
 }
+
+// =============================================================================
+// 4. DOCUMENT STATUS TRANSITIONS
+// =============================================================================
+
+const ALLOWED_DOCUMENT_TRANSITIONS: Record<DocumentStatus, DocumentStatus[]> = {
+  NOT_UPLOADED: ["UPLOADED", "MATCHED", "VERIFIED"],
+  UPLOADED: ["MATCHED", "MISMATCHED", "PENDING_REVIEW", "CORRUPTED", "VERIFIED"],
+  MATCHED: ["VERIFIED", "REPLACEMENT_PENDING", "PENDING_REVIEW", "NOT_UPLOADED"],
+  MISMATCHED: ["MATCHED", "PENDING_REVIEW", "NOT_UPLOADED"],
+  PENDING_REVIEW: ["MATCHED", "VERIFIED", "NOT_UPLOADED"],
+  VERIFIED: ["REPLACEMENT_PENDING", "NOT_UPLOADED"],
+  REPLACEMENT_PENDING: ["VERIFIED", "NOT_UPLOADED"],
+  CORRUPTED: ["NOT_UPLOADED", "UPLOADED"],
+};
+
+export interface TransitionDocumentInput {
+  organizationId: string;
+  waybillId: string;
+  targetStatus: DocumentStatus;
+  expectedVersion: number;
+  actor: StateActor;
+  reason?: string;
+}
+
+export async function transitionWaybillDocumentStatus(
+  input: TransitionDocumentInput,
+  txClient?: Prisma.TransactionClient
+) {
+  const run = async (tx: Prisma.TransactionClient) => {
+    const { organizationId, waybillId, targetStatus, expectedVersion, actor, reason } = input;
+
+    const current = await tx.waybill.findFirst({
+      where: { id: waybillId, organizationId },
+    });
+
+    if (!current) {
+      throw new AppError("NOT_FOUND", "بارنامه مورد نظر یافت نشد.");
+    }
+
+    if (current.documentStatus === targetStatus) {
+      return { success: true, idempotent: true, waybill: current };
+    }
+
+    const allowed = ALLOWED_DOCUMENT_TRANSITIONS[current.documentStatus] || [];
+    if (!allowed.includes(targetStatus)) {
+      throw new AppError(
+        "INVALID_TRANSITION",
+        `امکان گذار وضعیت مدرک از «${current.documentStatus}» به «${targetStatus}» وجود ندارد.`
+      );
+    }
+
+    const updatedCount = await tx.waybill.updateMany({
+      where: {
+        id: waybillId,
+        organizationId,
+        version: expectedVersion,
+        documentStatus: current.documentStatus,
+      },
+      data: {
+        documentStatus: targetStatus,
+        version: { increment: 1 },
+      },
+    });
+
+    if (updatedCount.count === 0) {
+      const fresh = await tx.waybill.findUnique({ where: { id: waybillId } });
+      throw new AppError(
+        "CONFLICT",
+        `وضعیت مدرک بارنامه هم‌زمان تغییر یافته است. وضعیت جاری: ${fresh?.documentStatus}`
+      );
+    }
+
+    await createAuditLogEntry(tx, {
+      organizationId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      action: `DOCUMENT_STATUS_${targetStatus}`,
+      entityType: "WAYBILL",
+      entityId: waybillId,
+      beforeJson: { status: current.documentStatus, version: expectedVersion },
+      afterJson: { status: targetStatus, version: expectedVersion + 1, reason },
+      correlationId: actor.correlationId,
+      ip: actor.ip,
+      userAgent: actor.userAgent,
+    });
+
+    return {
+      success: true,
+      idempotent: false,
+      previousStatus: current.documentStatus,
+      targetStatus,
+      newVersion: expectedVersion + 1,
+    };
+  };
+
+  if (txClient) {
+    return run(txClient);
+  }
+  return prisma.$transaction(run);
+}
+

@@ -25,6 +25,7 @@ uploads/
 private-data/
 signatures/
 receipts/
+.storage/
 
 # test artifacts
 coverage/

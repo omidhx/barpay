@@ -25,3 +25,5 @@ export interface DocumentRecord {
 }
 
 // Module export boundary
+export * from "./pdf-parser";
+export * from "./matching-service";
