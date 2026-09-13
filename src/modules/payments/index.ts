@@ -4,6 +4,8 @@
 export * from "./gateways/adapters";
 export * from "./gateways/gateway-service";
 export * from "./cards/bank-card-service";
+export * from "./review/payment-review-service";
+export * from "./refunds/refund-service";
 
 export type PaymentMethod =
   | "CARD_TO_CARD"

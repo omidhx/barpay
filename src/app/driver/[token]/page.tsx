@@ -103,6 +103,7 @@ export default async function DriverPortalPage({ params }: PageProps) {
             shipmentStatus: waybill.shipmentStatus,
             commitmentStatus: waybill.commitmentStatus,
             paymentStatus: waybill.paymentStatus,
+            releaseStatus: waybill.releaseStatus,
             commitmentText,
             enforcementMode: waybill.organization.settings?.commitmentEnforcement ?? "OFF",
           };

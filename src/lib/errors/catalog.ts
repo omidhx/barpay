@@ -112,6 +112,43 @@ export const ERROR_CATALOG: Record<string, ErrorDefinition> = {
     httpStatus: 409,
   },
 
+  // Refunds & Maker-Checker
+  REFUND_MAKER_CHECKER_VIOLATION: {
+    code: "REFUND_MAKER_CHECKER_VIOLATION",
+    humanMessage: "کاربر ثبت‌کننده بازگشت وجه نمی‌تواند آن را تأیید نماید (اصل تفکیک ثبت‌کننده و تأییدکننده).",
+    actionHint: "تأیید باید توسط کاربر دیگری با دسترسی سرپرست انجام شود.",
+    retryable: false,
+    httpStatus: 403,
+  },
+  REFUND_CEILING_EXCEEDED: {
+    code: "REFUND_CEILING_EXCEEDED",
+    humanMessage: "مجموع مبلغ بازگشت وجه نمی‌تواند از مجموع پرداخت‌های تأییدشده بارنامه فراتر رود.",
+    actionHint: "مبلغ بازگشتی را با سقف پرداخت‌های تأییدشده تطبیق دهید.",
+    retryable: false,
+    httpStatus: 422,
+  },
+  REFUND_ALREADY_SETTLED: {
+    code: "REFUND_ALREADY_SETTLED",
+    humanMessage: "این رکورد بازگشت وجه قبلاً تأیید، رد یا تسویه شده است.",
+    actionHint: "وضعیت رکورد بازگشت وجه را در سیستم بررسی نمایید.",
+    retryable: false,
+    httpStatus: 409,
+  },
+  REJECTION_REASON_REQUIRED: {
+    code: "REJECTION_REASON_REQUIRED",
+    humanMessage: "درج دلیل برای رد پرداخت یا رد بازگشت وجه الزامی است.",
+    actionHint: "دلیل مشخصی برای عدم پذیرش وارد نمایید.",
+    retryable: false,
+    httpStatus: 400,
+  },
+  AMOUNT_CORRECTION_REASON_REQUIRED: {
+    code: "AMOUNT_CORRECTION_REASON_REQUIRED",
+    humanMessage: "درج دلیل برای اصلاح مبلغ بارنامه الزامی است.",
+    actionHint: "علت تغییر مبلغ را به طور شفاف ثبت فرمایید.",
+    retryable: false,
+    httpStatus: 400,
+  },
+
   // Documents & Release
   DOCUMENT_NOT_VERIFIED: {
     code: "DOCUMENT_NOT_VERIFIED",

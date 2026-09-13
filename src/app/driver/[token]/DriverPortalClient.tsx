@@ -15,6 +15,7 @@ export interface WaybillViewData {
   shipmentStatus: string;
   commitmentStatus: string;
   paymentStatus: string;
+  releaseStatus?: string;
   commitmentText?: string | null;
   enforcementMode: "OFF" | "SHADOW" | "ENFORCED";
 }
@@ -803,6 +804,48 @@ export function DriverPortalClient({
                   </div>
                 )}
               </div>
+
+              {/* Step 4: Waybill Download (Decision 19 & Process 6.7) */}
+              {(waybill.paymentStatus === "APPROVED" || waybill.releaseStatus === "RELEASED" || waybill.releaseStatus === "AUTHORIZED") && (
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                  <div className="flex justify-between items-center border-b pb-3">
+                    <span className="text-xs font-bold text-slate-500">گام ۴: دریافت نسخه نهایی بارنامه</span>
+                    <span className="text-xs bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-semibold">
+                      آماده تحویل
+                    </span>
+                  </div>
+
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 leading-relaxed">
+                    پرداخت و اقرار الکترونیکی شما با موفقیت تأیید گردید. اکنون می‌توانید فایل رسمی PDF بارنامه را دانلود و در دستگاه خود ذخیره فرمایید.
+                  </div>
+
+                  <a
+                    href={`/api/driver/download/${token}`}
+                    download
+                    className="flex items-center justify-center gap-2 w-full h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-base shadow-md transition active:scale-[0.98]"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    دریافت و دانلود فایل PDF بارنامه
+                  </a>
+                </div>
+              )}
+
+              {/* In-review notice */}
+              {(waybill.paymentStatus === "SUBMITTED" || waybill.paymentStatus === "UNDER_REVIEW") && (
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+                  <div className="flex justify-between items-center border-b pb-3">
+                    <span className="text-xs font-bold text-slate-500">وضعیت بررسی پرداخت</span>
+                    <span className="text-xs bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full font-semibold">
+                      در صف بررسی
+                    </span>
+                  </div>
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 leading-relaxed">
+                    پرداخت شما ثبت شده و در صف بررسی متصدی قرار دارد. به محض تأیید مالی، امکان دریافت فایل بارنامه فعال خواهد شد.
+                  </div>
+                </div>
+              )}
             </main>
           )
         )}

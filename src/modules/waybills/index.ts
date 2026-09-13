@@ -4,6 +4,7 @@
 export * from "@/lib/waybills/phase";
 export * from "@/lib/waybills/amount";
 export * from "./state-machine";
+export * from "./amount-correction-service";
 
 export interface WaybillSummary {
   id: string;
