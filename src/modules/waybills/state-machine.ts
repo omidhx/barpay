@@ -289,7 +289,6 @@ export async function submitWaybillPayment(input: SubmitPaymentInput) {
     receiptDocumentId,
     idempotencyKey,
     actor,
-    enforcementMode = (process.env.COMMITMENT_ENFORCEMENT as "OFF" | "SHADOW" | "ENFORCED") || "OFF",
   } = input;
 
   return prisma.$transaction(async (tx) => {
@@ -310,7 +309,18 @@ export async function submitWaybillPayment(input: SubmitPaymentInput) {
     }
 
     // Invariant I-14 / Decision 19: Commitment before payment in ENFORCED mode
-    if (enforcementMode === "ENFORCED" && waybill.commitmentStatus !== "ACCEPTED") {
+    let effectiveEnforcement = input.enforcementMode;
+    if (!effectiveEnforcement) {
+      const orgSettings = await tx.organizationSettings.findUnique({
+        where: { organizationId },
+      });
+      effectiveEnforcement =
+        orgSettings?.commitmentEnforcement ??
+        (process.env.COMMITMENT_ENFORCEMENT as "OFF" | "SHADOW" | "ENFORCED") ??
+        "OFF";
+    }
+
+    if (effectiveEnforcement === "ENFORCED" && waybill.commitmentStatus !== "ACCEPTED") {
       throw new CommitmentNotAcceptedError(actor.correlationId ?? undefined);
     }
 

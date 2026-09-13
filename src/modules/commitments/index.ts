@@ -8,3 +8,5 @@ export interface CommitmentTemplateVariable {
 }
 
 export type CommitmentEnforcementMode = "OFF" | "SHADOW" | "ENFORCED";
+
+export * from "./commitment-service";

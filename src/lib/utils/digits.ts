@@ -41,3 +41,14 @@ export function normalizeMobile(input: string | null | undefined): string | null
 function isValidIranianMobile(mobile: string): boolean {
   return /^09[0-9]{9}$/.test(mobile);
 }
+
+/**
+ * Masks Iranian mobile number for logs and public displays: 0912***1234
+ */
+export function maskMobile(mobile: string | null | undefined): string {
+  if (!mobile) return "";
+  const clean = normalizeDigits(mobile).replace(/\D/g, "");
+  if (clean.length < 11) return clean;
+  return `${clean.slice(0, 4)}***${clean.slice(7)}`;
+}
+

@@ -20,3 +20,6 @@ export type SystemPermission =
   | "CANCEL_WAYBILL"
   | "MANAGE_PAYMENT_GATEWAYS"
   | "MANAGE_BANK_CARDS";
+
+export * from "./driver-auth";
+
