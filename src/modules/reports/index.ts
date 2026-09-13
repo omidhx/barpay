@@ -12,3 +12,4 @@ export interface DailyReportSummary {
 }
 
 // Module export boundary
+export * from "./reporting-service";

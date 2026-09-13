@@ -19,7 +19,9 @@ export type SystemPermission =
   | "REPLACE_PDF"
   | "CANCEL_WAYBILL"
   | "MANAGE_PAYMENT_GATEWAYS"
-  | "MANAGE_BANK_CARDS";
+  | "MANAGE_BANK_CARDS"
+  | "VIEW_REPORTS"
+  | "EXPORT_FINANCIAL";
 
 export * from "./driver-auth";
 

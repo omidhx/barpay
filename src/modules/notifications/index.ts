@@ -20,3 +20,5 @@ export interface SmsJobPayload {
 // Module export boundary
 export * from "./sms-provider";
 export * from "./notification-service";
+export * from "./in-app-notification-service";
+export * from "./sms-monitoring-service";
