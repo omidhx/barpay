@@ -2,6 +2,8 @@
  * Public interface for payments module.
  */
 export * from "./gateways/adapters";
+export * from "./gateways/gateway-service";
+export * from "./cards/bank-card-service";
 
 export type PaymentMethod =
   | "CARD_TO_CARD"
@@ -21,5 +23,3 @@ export interface CreatePaymentInput {
   receiptDocumentId?: string;
   idempotencyKey?: string;
 }
-
-// Module export boundary

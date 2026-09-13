@@ -276,6 +276,8 @@ export interface SubmitPaymentInput {
   idempotencyKey?: string;
   actor: StateActor;
   enforcementMode?: "OFF" | "SHADOW" | "ENFORCED";
+  gatewayProvider?: "SEP" | "BPM" | "PASARGAD" | "SADAD" | "ZARINPAL" | "ZIBAL";
+  gatewayTransactionId?: string;
 }
 
 export async function submitWaybillPayment(input: SubmitPaymentInput) {
@@ -289,6 +291,8 @@ export async function submitWaybillPayment(input: SubmitPaymentInput) {
     receiptDocumentId,
     idempotencyKey,
     actor,
+    gatewayProvider,
+    gatewayTransactionId,
   } = input;
 
   return prisma.$transaction(async (tx) => {
@@ -330,6 +334,7 @@ export async function submitWaybillPayment(input: SubmitPaymentInput) {
     }
 
     // Create payment row
+    const isGateway = method === "GATEWAY";
     const payment = await tx.payment.create({
       data: {
         organizationId,
@@ -343,16 +348,24 @@ export async function submitWaybillPayment(input: SubmitPaymentInput) {
         idempotencyKey,
         submittedByType: actor.actorType === "DRIVER" ? "DRIVER" : "OPERATOR",
         submittedById: actor.actorId,
-        status: method === "GATEWAY" ? "APPROVED" : "SUBMITTED",
-        autoVerifiedAt: method === "GATEWAY" ? new Date() : undefined,
+        status: isGateway ? "APPROVED" : "SUBMITTED",
+        gatewayProvider: isGateway ? gatewayProvider : undefined,
+        gatewayTransactionId: isGateway ? gatewayTransactionId : undefined,
+        autoVerifiedAt: isGateway ? new Date() : undefined,
       },
     });
 
     // Update waybill status
+    const canBeEligible =
+      isGateway &&
+      waybill.documentStatus === "VERIFIED" &&
+      (waybill.commitmentStatus === "ACCEPTED" || waybill.commitmentStatus === "NOT_REQUIRED");
+
     await tx.waybill.update({
       where: { id: waybillId },
       data: {
-        paymentStatus: method === "GATEWAY" ? "APPROVED" : "SUBMITTED",
+        paymentStatus: isGateway ? "APPROVED" : "SUBMITTED",
+        releaseStatus: canBeEligible ? "ELIGIBLE" : undefined,
       },
     });
 
