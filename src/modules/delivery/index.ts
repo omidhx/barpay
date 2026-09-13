@@ -7,4 +7,4 @@ export interface ReleaseCheckResult {
   unmetConditions: string[];
 }
 
-// Module export boundary
+export * from "./release-service";

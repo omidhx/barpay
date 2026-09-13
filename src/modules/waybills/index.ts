@@ -3,6 +3,7 @@
  */
 export * from "@/lib/waybills/phase";
 export * from "@/lib/waybills/amount";
+export * from "./state-machine";
 
 export interface WaybillSummary {
   id: string;
