@@ -47,6 +47,9 @@ describe("State Machine & Concurrency (PostgreSQL 16) — state-transitions.md &
 
   afterAll(async () => {
     if (testOrgId) {
+      await prisma.commitmentAcceptance.deleteMany({
+        where: { organizationId: testOrgId },
+      });
       await prisma.organization.delete({
         where: { id: testOrgId },
       });

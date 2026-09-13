@@ -97,6 +97,9 @@ describe("Driver Authentication, OTP & Legal Commitment (PostgreSQL 16) — busi
 
   afterAll(async () => {
     if (testOrgId) {
+      await prisma.commitmentAcceptance.deleteMany({
+        where: { organizationId: testOrgId },
+      });
       await prisma.organization.delete({
         where: { id: testOrgId },
       });
