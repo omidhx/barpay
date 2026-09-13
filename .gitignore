@@ -1,0 +1,38 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+build/
+
+# env & secrets — NEVER commit (master spec 13.5)
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+logs/
+
+# database backups & dumps (master spec 13.5)
+backups/
+*.sql.gz
+*.dump
+
+# real customer data must never enter the repo (master spec 13.5)
+uploads/
+private-data/
+signatures/
+receipts/
+
+# test artifacts
+coverage/
+playwright-report/
+test-results/
+
+# misc
+.DS_Store
+*.pem
+*.key
+tmp/

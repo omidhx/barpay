@@ -1,0 +1,856 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum OrganizationStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum DataRetentionPolicy {
+  KEEP_1Y
+  KEEP_10Y
+  KEEP_CUSTOM
+  KEEP_FOREVER
+}
+
+enum CommitmentEnforcementMode {
+  OFF
+  SHADOW
+  ENFORCED
+}
+
+enum UserRole {
+  OWNER
+  MANAGER
+  SUPERVISOR
+  OPERATOR
+  TECH_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum DriverStatus {
+  ACTIVE
+  BLOCKED
+}
+
+enum ShipmentStatus {
+  DRAFT
+  IMPORTED
+  VALIDATION_FAILED
+  READY_FOR_DRIVER
+  DRIVER_NOTIFIED
+  DRIVER_VIEWED
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+}
+
+enum DocumentStatus {
+  NOT_UPLOADED
+  UPLOADED
+  MATCHED
+  MISMATCHED
+  PENDING_REVIEW
+  VERIFIED
+  REPLACEMENT_PENDING
+  CORRUPTED
+}
+
+enum PaymentStatus {
+  NOT_REQUIRED
+  NOT_SUBMITTED
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  DISCREPANCY_REVIEW
+  RESIDUAL_DUE
+  REFUND_RECORDED
+  REFUND_SETTLED
+  CANCELLED
+}
+
+enum CommitmentStatus {
+  NOT_REQUIRED
+  PENDING
+  ACCEPTED
+  DECLINED
+  RE_ACCEPT_REQUIRED
+}
+
+enum ReleaseStatus {
+  BLOCKED
+  ELIGIBLE
+  AUTHORIZED
+  RELEASED
+  REVOKED
+}
+
+enum WaybillAmountSource {
+  EXCEL_CALCULATED
+  OPERATOR_ENTERED
+  OPERATOR_CORRECTION
+}
+
+enum WaybillAmountStatus {
+  DRAFT
+  APPROVED
+  SUPERSEDED
+}
+
+enum ImportBatchStatus {
+  PENDING
+  PROCESSING
+  VALIDATED
+  COMMITTING
+  COMMITTED
+  FAILED
+  CANCELLED
+}
+
+enum ImportRowStatus {
+  VALID
+  INVALID
+  IMPORTED
+  SKIPPED_PREVIOUSLY_CANCELLED
+}
+
+enum DocumentType {
+  WAYBILL_PDF
+  PAYMENT_RECEIPT
+  DRIVER_COMMITMENT
+  SIGNATURE
+  OTHER
+}
+
+enum MatchingMethod {
+  FILENAME
+  MANUAL
+}
+
+enum MatchingStatus {
+  AUTO_MATCHED
+  MANUALLY_ATTACHED
+  UNMATCHED
+  REPLACED
+}
+
+enum DocumentVisibility {
+  PRIVATE
+}
+
+enum PaymentMethod {
+  CARD_TO_CARD
+  POS
+  CASH
+  BANK_TRANSFER
+  GATEWAY
+  OTHER
+}
+
+enum SubmissionActorType {
+  DRIVER
+  OPERATOR
+}
+
+enum PaymentReviewDecision {
+  APPROVED
+  REJECTED
+  DISCREPANCY
+}
+
+enum RefundStatus {
+  RECORDED
+  SUPERVISOR_APPROVED
+  REJECTED
+  REFUND_SETTLED
+}
+
+enum GatewayProvider {
+  SEP
+  BPM
+  PASARGAD
+  SADAD
+  ZARINPAL
+  ZIBAL
+}
+
+enum GatewayMode {
+  LIVE
+  SANDBOX
+}
+
+enum GatewayTransactionStatus {
+  INITIATED
+  RETURNED
+  VERIFIED
+  FAILED
+  CANCELLED
+  EXPIRED
+  UNKNOWN
+}
+
+enum CommitmentVersionStatus {
+  DRAFT
+  ACTIVE
+  RETIRED
+}
+
+enum DocumentAccessType {
+  DOWNLOAD
+  VIEW
+}
+
+enum NotificationChannel {
+  SMS
+  IN_APP
+}
+
+enum NotificationJobStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  RETRYING
+}
+
+enum AuditActorType {
+  USER
+  DRIVER
+  SYSTEM
+}
+
+// =============================================================================
+// MODELS
+// =============================================================================
+
+model Organization {
+  id          String             @id @default(uuid())
+  name        String
+  slug        String             @unique
+  legalName   String?            @map("legal_name")
+  nationalId  String?            @map("national_id")
+  phone       String?
+  address     String?
+  status      OrganizationStatus @default(ACTIVE)
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  settings           OrganizationSettings?
+  excelMappings      ExcelColumnMapping[]
+  users              User[]
+  drivers            Driver[]
+  waybills           Waybill[]
+  importBatches      ImportBatch[]
+  documents          Document[]
+  paymentGateways    PaymentGateway[]
+  bankCards          BankCard[]
+  commitmentVersions CommitmentVersion[]
+  notifications      Notification[]
+  otpChallenges      OtpChallenge[]
+
+  @@map("organizations")
+}
+
+model OrganizationSettings {
+  organizationId        String                    @id @map("organization_id")
+  roundMultiple         BigInt                    @default(50000) @map("round_multiple")
+  surchargeAmount       BigInt                    @default(700000) @map("surcharge_amount")
+  applySurchargeDefault Boolean                   @default(true) @map("apply_surcharge_default")
+  dataRetentionPolicy   DataRetentionPolicy       @default(KEEP_10Y) @map("data_retention_policy")
+  smsDailyCap           Int                       @default(2000) @map("sms_daily_cap")
+  commitmentEnforcement CommitmentEnforcementMode @default(OFF) @map("commitment_enforcement")
+  signedUrlDownload     Boolean                   @default(false) @map("signed_url_download")
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_settings")
+}
+
+model ExcelColumnMapping {
+  id                 String   @id @default(uuid())
+  organizationId     String   @map("organization_id")
+  mappingName        String   @map("mapping_name")
+  columnMappingsJson Json     @map("column_mappings_json")
+  isDefault          Boolean  @default(false) @map("is_default")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("excel_column_mappings")
+}
+
+model User {
+  id           String     @id @default(uuid())
+  organizationId String   @map("organization_id")
+  mobile       String
+  fullName     String     @map("full_name")
+  role         UserRole   @default(OPERATOR)
+  passwordHash String     @map("password_hash")
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  permissions  UserPermission[]
+
+  @@unique([organizationId, mobile])
+  @@map("users")
+}
+
+model UserPermission {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  permission String
+  grantedBy  String?  @map("granted_by")
+  grantedAt  DateTime @default(now()) @map("granted_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permission])
+  @@map("user_permissions")
+}
+
+model Driver {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  mobile         String
+  fullName       String?      @map("full_name")
+  nationalId     String?      @map("national_id")
+  status         DriverStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  waybills     Waybill[]
+
+  @@index([organizationId, mobile])
+  @@map("drivers")
+}
+
+model Waybill {
+  id               String           @id @default(uuid())
+  organizationId   String           @map("organization_id")
+  waybillNumber    String           @map("waybill_number")
+  waybillYear      Int?             @map("waybill_year")
+  waybillYearKey   Int              @default(dbgenerated("COALESCE(waybill_year, 0)")) @map("waybill_year_key")
+  driverId         String?          @map("driver_id")
+  driverNameRaw    String           @map("driver_name_raw")
+  driverMobileRaw  String           @map("driver_mobile_raw")
+  plateNumberRaw   String?          @map("plate_number_raw")
+  issueDate        DateTime         @map("issue_date")
+  origin           String?
+  destination      String?
+  grossAmount      BigInt?          @map("gross_amount")
+  commissionAmount BigInt?          @map("commission_amount")
+  deductionsAmount BigInt?          @map("deductions_amount")
+  netAmount        BigInt?          @map("net_amount")
+  currentAmountId  String?          @map("current_amount_id")
+  shipmentStatus   ShipmentStatus   @default(IMPORTED) @map("shipment_status")
+  documentStatus   DocumentStatus   @default(NOT_UPLOADED) @map("document_status")
+  paymentStatus    PaymentStatus    @default(NOT_SUBMITTED) @map("payment_status")
+  commitmentStatus CommitmentStatus @default(PENDING) @map("commitment_status")
+  releaseStatus    ReleaseStatus    @default(BLOCKED) @map("release_status")
+  sourceImportId   String?          @map("source_import_id")
+  createdBy        String?          @map("created_by")
+  version          Int              @default(1)
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driver       Driver?      @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  sourceImport ImportBatch? @relation(fields: [sourceImportId], references: [id], onDelete: SetNull)
+
+  amounts               WaybillAmount[]
+  payments              Payment[]
+  documents             Document[]
+  accessLinks           DriverAccessLink[]
+  driverSessions        DriverSession[]
+  acceptances           CommitmentAcceptance[]
+  releaseAuthorizations ReleaseAuthorization[]
+  gatewayTransactions   GatewayTransaction[]
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, waybillNumber, waybillYearKey])
+  @@index([organizationId, shipmentStatus])
+  @@index([organizationId, waybillNumber])
+  @@index([driverId])
+  @@index([createdAt])
+  @@map("waybills")
+}
+
+model WaybillAmount {
+  id              String              @id @default(uuid())
+  organizationId  String              @map("organization_id")
+  waybillId       String              @map("waybill_id")
+  rawExcelAmount  BigInt              @map("raw_excel_amount")
+  roundedAmount   BigInt              @map("rounded_amount")
+  surchargeAmount BigInt              @map("surcharge_amount")
+  amount          BigInt
+  source          WaybillAmountSource @default(EXCEL_CALCULATED)
+  reason          String?
+  isCurrent       Boolean             @default(true) @map("is_current")
+  status          WaybillAmountStatus @default(APPROVED)
+  approvedBy      String?             @map("approved_by")
+  approvedAt      DateTime?           @map("approved_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  waybill Waybill @relation(fields: [organizationId, waybillId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([waybillId])
+  @@map("waybill_amounts")
+}
+
+model ImportBatch {
+  id             String            @id @default(uuid())
+  organizationId String            @map("organization_id")
+  filename       String
+  fileSize       Int               @map("file_size")
+  fileHash       String            @map("file_hash")
+  totalRows      Int               @default(0) @map("total_rows")
+  validRows      Int               @default(0) @map("valid_rows")
+  errorRows      Int               @default(0) @map("error_rows")
+  skippedRows    Int               @default(0) @map("skipped_rows")
+  status         ImportBatchStatus @default(PENDING)
+  createdBy      String?           @map("created_by")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rows         ImportRow[]
+  waybills     Waybill[]
+
+  @@unique([organizationId, fileHash])
+  @@map("import_batches")
+}
+
+model ImportRow {
+  id                 String          @id @default(uuid())
+  importBatchId      String          @map("import_batch_id")
+  rowNumber          Int             @map("row_number")
+  rawDataJson        Json            @map("raw_data_json")
+  normalizedDataJson Json?           @map("normalized_data_json")
+  status             ImportRowStatus @default(VALID)
+  errorDetailsJson   Json?           @map("error_details_json")
+  waybillId          String?         @map("waybill_id")
+  createdAt          DateTime        @default(now()) @map("created_at")
+
+  importBatch ImportBatch @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+
+  @@index([importBatchId, rowNumber])
+  @@map("import_rows")
+}
+
+model Document {
+  id                    String             @id @default(uuid())
+  organizationId        String             @map("organization_id")
+  waybillId             String?            @map("waybill_id")
+  documentType          DocumentType       @map("document_type")
+  storageKey            String             @map("storage_key")
+  fileSize              Int                @map("file_size")
+  mimeType              String             @map("mime_type")
+  sha256Hash            String             @map("sha256_hash")
+  extractedWaybillNumber String?           @map("extracted_waybill_number")
+  extractedWaybillYear  Int?               @map("extracted_waybill_year")
+  matchingMethod        MatchingMethod?    @map("matching_method")
+  matchingStatus        MatchingStatus     @default(UNMATCHED) @map("matching_status")
+  visibility            DocumentVisibility @default(PRIVATE)
+  uploadedBy            String?            @map("uploaded_by")
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  waybill      Waybill?     @relation(fields: [organizationId, waybillId], references: [organizationId, id], onDelete: SetNull)
+
+  @@index([sha256Hash])
+  @@index([waybillId])
+  @@map("documents")
+}
+
+model Payment {
+  id                   String              @id @default(uuid())
+  organizationId       String              @map("organization_id")
+  waybillId            String              @map("waybill_id")
+  parentPaymentId      String?             @map("parent_payment_id")
+  isResidual           Boolean             @default(false) @map("is_residual")
+  waybillAmountId      String              @map("waybill_amount_id")
+  idempotencyKey       String?             @map("idempotency_key")
+  version              Int                 @default(1)
+  method               PaymentMethod
+  amount               BigInt
+  trackingNumber       String?             @map("tracking_number")
+  payoutCardId         String?             @map("payout_card_id")
+  gatewayProvider      GatewayProvider?    @map("gateway_provider")
+  gatewayTransactionId String?             @map("gateway_transaction_id")
+  autoVerifiedAt       DateTime?           @map("auto_verified_at")
+  paidAt               DateTime?           @map("paid_at")
+  receiptDocumentId    String?             @map("receipt_document_id")
+  submittedByType      SubmissionActorType @default(DRIVER) @map("submitted_by_type")
+  submittedById        String?             @map("submitted_by_id")
+  status               PaymentStatus       @default(SUBMITTED)
+  reviewedBy           String?             @map("reviewed_by")
+  reviewedAt           DateTime?           @map("reviewed_at")
+  rejectionReason      String?             @map("rejection_reason")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  waybill       Waybill         @relation(fields: [organizationId, waybillId], references: [organizationId, id], onDelete: Cascade)
+  parentPayment Payment?        @relation("ResidualPayments", fields: [parentPaymentId], references: [id])
+  childPayments Payment[]       @relation("ResidualPayments")
+  payoutCard    BankCard?       @relation(fields: [payoutCardId], references: [id], onDelete: SetNull)
+  reviews       PaymentReview[]
+  refunds       PaymentRefund[]
+
+  @@unique([organizationId, id])
+  @@index([waybillId])
+  @@index([organizationId, status])
+  @@map("payments")
+}
+
+model PaymentReview {
+  id             String                @id @default(uuid())
+  organizationId String                @map("organization_id")
+  paymentId      String                @map("payment_id")
+  reviewerId     String                @map("reviewer_id")
+  decision       PaymentReviewDecision
+  notes          String?
+  reviewedAt     DateTime              @default(now()) @map("reviewed_at")
+
+  payment Payment @relation(fields: [organizationId, paymentId], references: [organizationId, id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@map("payment_reviews")
+}
+
+model PaymentRefund {
+  id              String       @id @default(uuid())
+  organizationId  String       @map("organization_id")
+  waybillId       String       @map("waybill_id")
+  paymentId       String?      @map("payment_id")
+  amount          BigInt
+  reason          String
+  status          RefundStatus @default(RECORDED)
+  recordedBy      String       @map("recorded_by")
+  approvedBy      String?      @map("approved_by")
+  approvedAt      DateTime?    @map("approved_at")
+  rejectionReason String?      @map("rejection_reason")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([waybillId])
+  @@map("payment_refunds")
+}
+
+model PaymentGateway {
+  id                String          @id @default(uuid())
+  organizationId    String          @map("organization_id")
+  provider          GatewayProvider
+  credentialsJson   Json            @map("credentials_json")
+  mode              GatewayMode     @default(LIVE)
+  isActive          Boolean         @default(false) @map("is_active")
+  lastHealthCheckAt DateTime?       @map("last_health_check_at")
+  lastHealthStatus  String?         @map("last_health_status")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  transactions GatewayTransaction[]
+
+  @@map("payment_gateways")
+}
+
+model GatewayTransaction {
+  id                  String                   @id @default(uuid())
+  organizationId      String                   @map("organization_id")
+  waybillId           String                   @map("waybill_id")
+  paymentId           String?                  @map("payment_id")
+  paymentGatewayId    String                   @map("payment_gateway_id")
+  provider            GatewayProvider
+  providerReference   String?                  @map("provider_reference")
+  state               String
+  amount              BigInt
+  waybillAmountId     String                   @map("waybill_amount_id")
+  status              GatewayTransactionStatus @default(INITIATED)
+  errorCode           String?                  @map("error_code")
+  initPayloadJson     Json?                    @map("init_payload_json")
+  callbackPayloadJson Json?                    @map("callback_payload_json")
+  verifyPayloadJson   Json?                    @map("verify_payload_json")
+  inquiryCount        Int                      @default(0) @map("inquiry_count")
+  expiresAt           DateTime                 @map("expires_at")
+  version             Int                      @default(1)
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+
+  waybill Waybill        @relation(fields: [organizationId, waybillId], references: [organizationId, id], onDelete: Cascade)
+  gateway PaymentGateway @relation(fields: [paymentGatewayId], references: [id], onDelete: Cascade)
+
+  @@index([status, expiresAt])
+  @@map("gateway_transactions")
+}
+
+model BankCard {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  bankCode        String   @map("bank_code")
+  holderFirstName String   @map("holder_first_name")
+  holderLastName  String   @map("holder_last_name")
+  cardNumber      String   @map("card_number")
+  accountNumber   String?  @map("account_number")
+  iban            String
+  isActive        Boolean  @default(true) @map("is_active")
+  displayOrder    Int      @default(0) @map("display_order")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payments     Payment[]
+
+  @@index([organizationId, isActive, displayOrder])
+  @@map("bank_cards")
+}
+
+model DriverAccessLink {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  waybillId      String    @map("waybill_id")
+  tokenHash      String    @unique @map("token_hash")
+  expiresAt      DateTime  @map("expires_at")
+  revokedAt      DateTime? @map("revoked_at")
+  isSingleUse    Boolean   @default(false) @map("is_single_use")
+  accessCount    Int       @default(0) @map("access_count")
+  lastAccessedAt DateTime? @map("last_accessed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  waybill  Waybill         @relation(fields: [organizationId, waybillId], references: [organizationId, id], onDelete: Cascade)
+  sessions DriverSession[]
+
+  @@index([organizationId, waybillId])
+  @@map("driver_access_links")
+}
+
+model DriverSession {
+  id                 String    @id @default(uuid())
+  organizationId     String    @map("organization_id")
+  waybillId          String    @map("waybill_id")
+  driverAccessLinkId String    @map("driver_access_link_id")
+  sessionTokenHash   String    @unique @map("session_token_hash")
+  expiresAt          DateTime  @map("expires_at")
+  ip                 String?
+  userAgent          String?   @map("user_agent")
+  revokedAt          DateTime? @map("revoked_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  waybill    Waybill          @relation(fields: [organizationId, waybillId], references: [organizationId, id], onDelete: Cascade)
+  accessLink DriverAccessLink @relation(fields: [driverAccessLinkId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, waybillId])
+  @@map("driver_sessions")
+}
+
+model OtpChallenge {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  mobile         String
+  waybillId      String?   @map("waybill_id")
+  codeHash       String    @map("code_hash")
+  attemptsCount  Int       @default(0) @map("attempts_count")
+  expiresAt      DateTime  @map("expires_at")
+  lockedUntil    DateTime? @map("locked_until")
+  verifiedAt     DateTime? @map("verified_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, mobile])
+  @@map("otp_challenges")
+}
+
+model CommitmentVersion {
+  id             String                  @id @default(uuid())
+  organizationId String                  @map("organization_id")
+  title          String
+  templateKey    String                  @map("template_key")
+  variablesJson  Json                    @map("variables_json")
+  body           String
+  contentHash    String                  @map("content_hash")
+  status         CommitmentVersionStatus @default(DRAFT)
+  isDefault      Boolean                 @default(false) @map("is_default")
+  createdBy      String?                 @map("created_by")
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+
+  organization Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  acceptances  CommitmentAcceptance[]
+
+  @@map("commitment_versions")
+}
+
+model CommitmentAcceptance {
+  id                  String   @id @default(uuid())
+  organizationId      String   @map("organization_id")
+  waybillId           String   @map("waybill_id")
+  commitmentVersionId String   @map("commitment_version_id")
+  contentHash         String   @map("content_hash")
+  renderedText        String   @map("rendered_text")
+  signatureDocumentId String?  @map("signature_document_id")
+  mobileVerified      Boolean  @default(true) @map("mobile_verified")
+  sessionId           String?  @map("session_id")
+  signedAt            DateTime @default(now()) @map("signed_at")
+  ip                  String?
+  userAgent           String?  @map("user_agent")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  waybill           Waybill           @relation(fields: [organizationId, waybillId], references: [organizationId, id], onDelete: Cascade)
+  commitmentVersion CommitmentVersion @relation(fields: [commitmentVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([waybillId, commitmentVersionId])
+  @@map("commitment_acceptances")
+}
+
+model ReleaseAuthorization {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  waybillId      String    @map("waybill_id")
+  authorizedBy   String    @map("authorized_by")
+  authorizedAt   DateTime  @default(now()) @map("authorized_at")
+  expiresAt      DateTime? @map("expires_at")
+  revokedAt      DateTime? @map("revoked_at")
+  revokedBy      String?   @map("revoked_by")
+  revokeReason   String?   @map("revoke_reason")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  waybill Waybill @relation(fields: [organizationId, waybillId], references: [organizationId, id], onDelete: Cascade)
+
+  @@map("release_authorizations")
+}
+
+model DocumentAccessEvent {
+  id              String             @id @default(uuid())
+  organizationId  String             @map("organization_id")
+  waybillId       String             @map("waybill_id")
+  documentId      String             @map("document_id")
+  driverSessionId String?            @map("driver_session_id")
+  accessType      DocumentAccessType @default(DOWNLOAD) @map("access_type")
+  grantedAt       DateTime           @default(now()) @map("granted_at")
+  ip              String?
+  userAgent       String?            @map("user_agent")
+
+  @@index([waybillId])
+  @@map("document_access_events")
+}
+
+model NotificationJob {
+  id                String                @id @default(uuid())
+  organizationId    String                @map("organization_id")
+  channel           NotificationChannel   @default(SMS)
+  recipient         String
+  templateKey       String                @map("template_key")
+  payloadJson       Json                  @map("payload_json")
+  status            NotificationJobStatus @default(PENDING)
+  attempts          Int                   @default(0)
+  lastError         String?               @map("last_error")
+  nextRetryAt       DateTime?             @map("next_retry_at")
+  provider          String?
+  providerMessageId String?               @map("provider_message_id")
+  deliveredAt       DateTime?             @map("delivered_at")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+
+  @@index([status, nextRetryAt])
+  @@map("notification_jobs")
+}
+
+model Notification {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  userId         String?   @map("user_id")
+  title          String
+  message        String
+  entityType     String?   @map("entity_type")
+  entityId       String?   @map("entity_id")
+  isRead         Boolean   @default(false) @map("is_read")
+  readAt         DateTime? @map("read_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model IdempotencyRecord {
+  id               String   @id @default(uuid())
+  organizationId   String   @map("organization_id")
+  endpoint         String
+  idempotencyKey   String   @map("idempotency_key")
+  requestHash      String   @map("request_hash")
+  responseStatus   Int      @map("response_status")
+  responseBodyJson Json?    @map("response_body_json")
+  expiresAt        DateTime @map("expires_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@unique([organizationId, endpoint, idempotencyKey])
+  @@index([expiresAt])
+  @@map("idempotency_records")
+}
+
+model AuditLog {
+  id             String         @id @default(uuid())
+  organizationId String         @map("organization_id")
+  actorType      AuditActorType @map("actor_type")
+  actorId        String?        @map("actor_id")
+  action         String
+  entityType     String         @map("entity_type")
+  entityId       String         @map("entity_id")
+  beforeJson     Json?          @map("before_json")
+  afterJson      Json?          @map("after_json")
+  correlationId  String?        @map("correlation_id")
+  prevHash       String?        @map("prev_hash")
+  rowHash        String         @map("row_hash")
+  ip             String?
+  userAgent      String?        @map("user_agent")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  @@index([organizationId, entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model TechAdminAccessRequest {
+  id              String    @id @default(uuid())
+  organizationId  String    @map("organization_id")
+  userId          String    @map("user_id")
+  reason          String
+  durationMinutes Int       @default(60) @map("duration_minutes")
+  approvedBy      String?   @map("approved_by")
+  approvedAt      DateTime? @map("approved_at")
+  expiresAt       DateTime? @map("expires_at")
+  revokedAt       DateTime? @map("revoked_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@map("tech_admin_access_requests")
+}
