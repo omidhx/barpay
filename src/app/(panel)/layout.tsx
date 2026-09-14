@@ -6,9 +6,12 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   FileSpreadsheet,
+  FileText,
+  Truck,
+  CheckSquare,
+  Settings,
   ExternalLink,
   Bell,
-  Truck,
   ShieldCheck,
   Building2,
   Menu,
@@ -49,9 +52,39 @@ export default function PanelLayout({
       badge: null,
     },
     {
+      label: "مدیریت بارنامه‌ها",
+      href: "/waybills",
+      icon: Truck,
+      badge: null,
+    },
+    {
+      label: "ورود فایل اکسل",
+      href: "/imports",
+      icon: FileSpreadsheet,
+      badge: "گروهی",
+    },
+    {
+      label: "اسناد و تطبیق PDF",
+      href: "/documents",
+      icon: FileText,
+      badge: "۱:۱",
+    },
+    {
+      label: "صف بررسی پرداخت‌ها",
+      href: "/payments",
+      icon: CheckSquare,
+      badge: "کارتابل",
+    },
+    {
       label: "گزارش‌های مالی و تسویه",
       href: "/reports",
       icon: FileSpreadsheet,
+      badge: null,
+    },
+    {
+      label: "تنظیمات درگاه و کارت‌ها",
+      href: "/settings",
+      icon: Settings,
       badge: null,
     },
     {
@@ -62,6 +95,18 @@ export default function PanelLayout({
       external: true,
     },
   ];
+
+  const pageTitleMap: Record<string, string> = {
+    "/dashboard": "داشبورد عملیاتی",
+    "/waybills": "مدیریت بارنامه‌ها",
+    "/imports": "ورود فایل اکسل",
+    "/documents": "اسناد و تطبیق PDF",
+    "/payments": "صف بررسی پرداخت‌ها",
+    "/reports": "گزارش‌های مالی و تسویه",
+    "/settings": "تنظیمات درگاه و کارت‌ها",
+  };
+
+  const currentPageTitle = pageTitleMap[pathname] || "داشبورد عملیاتی";
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 flex flex-col md:flex-row">
@@ -120,14 +165,14 @@ export default function PanelLayout({
                   href={item.href}
                   target={item.external ? "_blank" : undefined}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                     isActive
                       ? "bg-blue-600 text-white shadow-sm shadow-blue-600/20"
                       : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-zinc-500"}`} />
+                  <div className="flex items-center gap-2.5">
+                    <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-zinc-500"}`} />
                     <span>{item.label}</span>
                   </div>
                   {item.badge && (
@@ -173,7 +218,7 @@ export default function PanelLayout({
           <div className="flex items-center gap-2 text-sm text-zinc-600">
             <span className="font-semibold text-zinc-900">پنل مدیریت</span>
             <span>/</span>
-            <span>{pathname === "/reports" ? "گزارش‌های مالی" : "داشبورد عملیاتی"}</span>
+            <span>{currentPageTitle}</span>
           </div>
 
           <div className="flex items-center gap-4">

@@ -303,7 +303,11 @@ async function main() {
   if (demoWaybillId) {
     const crypto = await import("crypto");
     const demoToken = "demo-driver-token";
-    const tokenHash = crypto.createHash("sha256").update(demoToken).digest("hex");
+    const HMAC_SECRET =
+      process.env.APP_SECRET ||
+      process.env.GATEWAY_CREDENTIALS_KEY ||
+      "barnameh-pay-default-secret-key-32-bytes-minimum";
+    const tokenHash = crypto.createHmac("sha256", HMAC_SECRET).update(demoToken).digest("hex");
 
     await prisma.driverAccessLink.upsert({
       where: { tokenHash },
