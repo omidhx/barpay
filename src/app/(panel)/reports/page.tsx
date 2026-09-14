@@ -193,7 +193,7 @@ export default function ReportsPage() {
             <span className="text-xs font-normal text-zinc-500 font-sans">ریال</span>
           </div>
           <div className="text-xs text-zinc-400 mt-1">
-            {roundingSummary?.roundedUpCount.toLocaleString("fa-IR")} مورد نیازمند گرد کردن
+            {(roundingSummary?.roundedUpCount ?? 0).toLocaleString("fa-IR")} مورد نیازمند گرد کردن
           </div>
         </div>
       </div>

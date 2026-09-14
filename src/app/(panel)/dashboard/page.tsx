@@ -20,8 +20,8 @@ interface DashboardData {
   phases: Record<WaybillPhase, number>;
   kpis: {
     totalWaybills: number;
-    pendingReviewCount: number;
-    staleReviewCount: number;
+    pendingReviewsCount: number;
+    staleReviewsCount: number;
     releasedCount: number;
     totalPaidAmount: string;
     todayPaidAmount: string;
@@ -29,22 +29,22 @@ interface DashboardData {
 }
 
 interface SmsDashboardData {
-  dailyCap: number;
-  usedToday: number;
-  remainingToday: number;
-  usagePercent: number;
-  isWarningThreshold: boolean;
-  circuitBreaker: {
-    primaryProvider: string;
-    primaryState: string;
-    secondaryProvider: string;
-  };
-  stats: {
+  dailyStats?: {
+    dailyCap: number;
     sentToday: number;
     failedToday: number;
     pendingToday: number;
+    remainingToday: number;
+    usagePercent: number;
+    isWarningThreshold: boolean;
   };
-  recentFailures: Array<{
+  circuitBreaker?: {
+    primaryProvider: string;
+    primaryState: string;
+    secondaryProvider: string;
+    isFailoverActive: boolean;
+  };
+  recentFailures?: Array<{
     id: string;
     recipient: string;
     templateKey: string;
@@ -81,17 +81,17 @@ export default function DashboardPage() {
 
       if (dashRes.ok) {
         const json = await dashRes.json();
-        if (json.ok) setData(json.data);
+        if (json.ok && json.data) setData(json.data);
       }
 
       if (smsRes.ok) {
         const json = await smsRes.json();
-        if (json.ok) setSmsData(json.data);
+        if (json.ok && json.data) setSmsData(json.data);
       }
 
       if (notifRes.ok) {
         const json = await notifRes.json();
-        if (json.ok) setNotifications(json.data.notifications || []);
+        if (json.ok && json.data) setNotifications(json.data.notifications || []);
       }
     } catch (err) {
       console.error("Failed to load dashboard data", err);
@@ -104,6 +104,11 @@ export default function DashboardPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  function formatNumber(val: number | undefined | null): string {
+    if (val === undefined || val === null || isNaN(Number(val))) return "۰";
+    return Number(val).toLocaleString("fa-IR");
+  }
 
   function formatRials(amountStr: string | undefined): string {
     if (!amountStr) return "۰";
@@ -155,6 +160,17 @@ export default function DashboardPage() {
 
   const kpis = data?.kpis;
   const phases = data?.phases;
+
+  // Safe SMS calculations
+  const dailyStats = smsData?.dailyStats;
+  const sentToday = dailyStats?.sentToday ?? 0;
+  const pendingToday = dailyStats?.pendingToday ?? 0;
+  const usedToday = sentToday + pendingToday;
+  const dailyCap = dailyStats?.dailyCap ?? 2000;
+  const remainingToday = dailyStats?.remainingToday ?? Math.max(0, dailyCap - usedToday);
+  const usagePercent = dailyStats?.usagePercent ?? (dailyCap > 0 ? Math.round((usedToday / dailyCap) * 100) : 0);
+  const isWarningThreshold = dailyStats?.isWarningThreshold ?? (usedToday >= Math.floor(dailyCap * 0.8));
+  const primaryProvider = smsData?.circuitBreaker?.primaryProvider ?? "FARAZSMS";
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -235,10 +251,10 @@ export default function DashboardPage() {
           </div>
           <div>
             <div className="text-xl font-bold text-zinc-900 font-mono">
-              {(kpis?.totalWaybills || 0).toLocaleString("fa-IR")} <span className="text-xs font-normal text-zinc-500 font-sans">فقره</span>
+              {formatNumber(kpis?.totalWaybills)} <span className="text-xs font-normal text-zinc-500 font-sans">فقره</span>
             </div>
             <div className="text-xs text-zinc-400 mt-1">
-              {(kpis?.releasedCount || 0).toLocaleString("fa-IR")} بارنامه ترخیص شده
+              {formatNumber(kpis?.releasedCount)} بارنامه ترخیص شده
             </div>
           </div>
         </div>
@@ -248,19 +264,19 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between text-zinc-500 mb-2">
             <span className="text-xs font-medium">در انتظار بررسی متصدی</span>
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-              (kpis?.staleReviewCount || 0) > 0 ? "bg-rose-50 text-rose-600" : "bg-purple-50 text-purple-600"
+              (kpis?.staleReviewsCount || 0) > 0 ? "bg-rose-50 text-rose-600" : "bg-purple-50 text-purple-600"
             }`}>
               <Clock className="w-4 h-4" />
             </div>
           </div>
           <div>
             <div className="text-xl font-bold text-zinc-900 font-mono">
-              {(kpis?.pendingReviewCount || 0).toLocaleString("fa-IR")} <span className="text-xs font-normal text-zinc-500 font-sans">مورد</span>
+              {formatNumber(kpis?.pendingReviewsCount)} <span className="text-xs font-normal text-zinc-500 font-sans">مورد</span>
             </div>
-            {(kpis?.staleReviewCount || 0) > 0 ? (
+            {(kpis?.staleReviewsCount || 0) > 0 ? (
               <div className="text-xs text-rose-600 font-medium mt-1 flex items-center gap-1">
                 <AlertTriangle className="w-3.5 h-3.5" />
-                <span>{(kpis?.staleReviewCount || 0).toLocaleString("fa-IR")} مورد بیش از ۴ ساعت در صف</span>
+                <span>{formatNumber(kpis?.staleReviewsCount)} مورد بیش از ۴ ساعت در صف</span>
               </div>
             ) : (
               <div className="text-xs text-emerald-600 mt-1">صف بررسی به‌روز است</div>
@@ -298,7 +314,7 @@ export default function DashboardPage() {
                   <div className="flex items-baseline justify-between">
                     <span className="text-xs text-zinc-400 font-mono">{phaseKey}</span>
                     <span className={`text-base font-bold font-mono ${count > 0 ? color.text : "text-zinc-400"}`}>
-                      {count.toLocaleString("fa-IR")}
+                      {formatNumber(count)}
                     </span>
                   </div>
                 </div>
@@ -316,7 +332,7 @@ export default function DashboardPage() {
               <MessageSquare className="w-5 h-5 text-blue-600" />
               <h2 className="text-sm font-bold text-zinc-900">پایش مصرف پیامک و سقف روزانه</h2>
             </div>
-            {smsData?.isWarningThreshold && (
+            {isWarningThreshold && (
               <span className="px-2.5 py-1 bg-rose-100 text-rose-700 text-xs font-semibold rounded-full flex items-center gap-1">
                 <AlertTriangle className="w-3.5 h-3.5" />
                 <span>مصرف بیش از ۸۰٪ سقف</span>
@@ -325,32 +341,30 @@ export default function DashboardPage() {
           </div>
 
           {/* Daily Cap Progress */}
-          {smsData && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-zinc-600">
-                  مصرف امروز: <strong className="text-zinc-900 font-mono">{smsData.usedToday.toLocaleString("fa-IR")}</strong> از <strong className="text-zinc-900 font-mono">{smsData.dailyCap.toLocaleString("fa-IR")}</strong> پیامک
-                </span>
-                <span className="font-bold text-zinc-900 font-mono">{smsData.usagePercent}%</span>
-              </div>
-              <div className="w-full h-3 bg-zinc-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    smsData.usagePercent > 80
-                      ? "bg-rose-500"
-                      : smsData.usagePercent > 50
-                      ? "bg-amber-500"
-                      : "bg-blue-600"
-                  }`}
-                  style={{ width: `${Math.max(smsData.usagePercent, 2)}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[11px] text-zinc-400">
-                <span>سهمیه باقیمانده: {smsData.remainingToday.toLocaleString("fa-IR")} پیامک</span>
-                <span>پرووایدر فعال: {smsData.circuitBreaker.primaryProvider} (مدار سالم)</span>
-              </div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs">
+              <span className="text-zinc-600">
+                مصرف امروز: <strong className="text-zinc-900 font-mono">{formatNumber(usedToday)}</strong> از <strong className="text-zinc-900 font-mono">{formatNumber(dailyCap)}</strong> پیامک
+              </span>
+              <span className="font-bold text-zinc-900 font-mono">{formatNumber(usagePercent)}%</span>
             </div>
-          )}
+            <div className="w-full h-3 bg-zinc-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  usagePercent > 80
+                    ? "bg-rose-500"
+                    : usagePercent > 50
+                    ? "bg-amber-500"
+                    : "bg-blue-600"
+                }`}
+                style={{ width: `${Math.max(usagePercent, 2)}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-[11px] text-zinc-400">
+              <span>سهمیه باقیمانده: {formatNumber(remainingToday)} پیامک</span>
+              <span>پرووایدر فعال: {primaryProvider} (مدار سالم)</span>
+            </div>
+          </div>
 
           {/* Recent Failures with Persian reason */}
           <div>
