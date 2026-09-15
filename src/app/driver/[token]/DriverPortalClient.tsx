@@ -468,6 +468,21 @@ export function DriverPortalClient({
                   />
                 </div>
 
+                {token === "demo-driver-token" && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-center space-y-1.5">
+                    <span className="text-[11px] text-blue-800 font-bold block">
+                      کد تایید تستی این بارنامه: <span className="font-mono text-base text-blue-950 font-black">۱۲۳۴۵۶</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setOtpCode("123456")}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs"
+                    >
+                      درج خودکار کد ۱۲۳۴۵۶
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center text-xs text-slate-500">
                   {otpTimer > 0 ? (
                     <span>

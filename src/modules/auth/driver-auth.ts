@@ -218,8 +218,8 @@ export async function requestDriverOtp(
     );
   }
 
-  // 4. Generate 6-digit OTP code using CSPRNG
-  const otpCode = crypto.randomInt(100000, 1000000).toString();
+  // 4. Generate 6-digit OTP code using CSPRNG (or deterministic 123456 for demo token)
+  const otpCode = token === "demo-driver-token" ? "123456" : crypto.randomInt(100000, 1000000).toString();
   const codeHash = computeHmacSha256(otpCode);
 
   const expiresAt = new Date(Date.now() + 3 * 60 * 1000); // 3 minutes TTL

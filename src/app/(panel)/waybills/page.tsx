@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   FileText,
   Search,
@@ -11,6 +12,7 @@ import {
   AlertCircle,
   ChevronRight,
   ChevronLeft,
+  Eye,
 } from "lucide-react";
 import { WAYBILL_PHASE_LABELS, WaybillPhase } from "@/lib/waybills/phase";
 
@@ -267,7 +269,12 @@ export default function WaybillsPage() {
                   return (
                     <tr key={w.id} className="hover:bg-zinc-50/80 transition-colors">
                       <td className="py-3.5 px-4 font-mono font-bold text-zinc-900">
-                        {w.waybillNumber}
+                        <Link
+                          href={`/waybills/${w.id}`}
+                          className="hover:text-blue-600 hover:underline transition-colors block"
+                        >
+                          {w.waybillNumber}
+                        </Link>
                         <div className="text-[10px] text-zinc-400 font-sans">
                           {new Date(w.issueDate).toLocaleDateString("fa-IR")}
                         </div>
@@ -309,6 +316,15 @@ export default function WaybillsPage() {
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center justify-center gap-1.5">
+                          {/* View Full 8-Section Details Link */}
+                          <Link
+                            href={`/waybills/${w.id}`}
+                            className="p-1.5 text-zinc-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="مشاهده جزئیات ۸ بخشی بارنامه"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Link>
+
                           {/* Correct Amount Button */}
                           <button
                             onClick={() => {
@@ -316,7 +332,7 @@ export default function WaybillsPage() {
                               setNewAmount(w.rawAmount);
                               setCorrectionReason("");
                             }}
-                            className="p-1.5 text-zinc-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-1.5 text-zinc-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
                             title="اصلاح مبلغ بارنامه"
                           >
                             <Edit3 className="w-4 h-4" />

@@ -16,6 +16,8 @@ import {
   Building2,
   Menu,
   X,
+  Users,
+  MessageSquare,
 } from "lucide-react";
 
 export default function PanelLayout({
@@ -76,13 +78,31 @@ export default function PanelLayout({
       badge: "کارتابل",
     },
     {
+      label: "مانیتورینگ خطوط پیامک",
+      href: "/monitoring",
+      icon: MessageSquare,
+      badge: "SLA",
+    },
+    {
+      label: "قالب‌های تعهدنامه",
+      href: "/commitments",
+      icon: ShieldCheck,
+      badge: "حقوقی",
+    },
+    {
+      label: "مدیریت کاربران و نقش‌ها",
+      href: "/users",
+      icon: Users,
+      badge: null,
+    },
+    {
       label: "گزارش‌های مالی و تسویه",
       href: "/reports",
       icon: FileSpreadsheet,
       badge: null,
     },
     {
-      label: "تنظیمات درگاه و کارت‌ها",
+      label: "تنظیمات سیستم و درگاه‌ها",
       href: "/settings",
       icon: Settings,
       badge: null,
@@ -102,11 +122,14 @@ export default function PanelLayout({
     "/imports": "ورود فایل اکسل",
     "/documents": "اسناد و تطبیق PDF",
     "/payments": "صف بررسی پرداخت‌ها",
+    "/monitoring": "مانیتورینگ خطوط و پیامک‌ها",
+    "/commitments": "مدیریت نسخه‌های تعهدنامه",
+    "/users": "مدیریت کاربران و دسترسی‌ها",
     "/reports": "گزارش‌های مالی و تسویه",
-    "/settings": "تنظیمات درگاه و کارت‌ها",
+    "/settings": "تنظیمات سیستم و درگاه‌ها",
   };
 
-  const currentPageTitle = pageTitleMap[pathname] || "داشبورد عملیاتی";
+  const currentPageTitle = pageTitleMap[pathname] || (pathname.startsWith("/waybills/") ? "جزئیات بارنامه" : "داشبورد عملیاتی");
 
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 flex flex-col md:flex-row">
